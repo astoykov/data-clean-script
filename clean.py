@@ -2,14 +2,14 @@ import csv
 import re
 import phonenumbers
 
-# Simple Regex for syntax checking
+# Simple Regex for email syntax checking
 email_regex = '^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$'
-
+# Simple Regex for name syntax checking
 name_regex = '^[a-zA-Z .\'-]+$'
 
 def check_email(value):
 		
-	#if email is empty return
+	#if email is too short return blank
 	if len(value) < 6:
 		return ''
 		
@@ -27,13 +27,14 @@ def check_email(value):
 	domain = str(splitAddress[1])
 	print('Domain:', domain)
 
-	#TODO: check domain against a list of valid domains and use soundex to correct misspelled domains or try dnslookup on their MX record
+	#TODO: check domain against a list of valid domains and 
+	# use soundex to correct misspelled domains or try dnslookup on their MX record
 	
 	return value
 
 def check_phone(value):
 		
-	#if phone is empty return
+	#if phone is too short return blank
 	if len(value) < 10 :
 		return value
 		
@@ -51,7 +52,11 @@ def check_phone(value):
 		phone = phonenumbers.parse(value, None)
 		print('Phone:',phone)
 	except phonenumbers.phonenumberutil.NumberParseException:
-		return '';
+		try:
+			phone = phonenumbers.parse(value, 'GB')
+			print('Phone:',phone)
+		except phonenumbers.phonenumberutil.NumberParseException:
+				return '';
 		
 	if not phonenumbers.is_valid_number(phone):
 		return ''
@@ -59,11 +64,12 @@ def check_phone(value):
 	if not phonenumbers.is_possible_number(phone):
 		return ''
 	
+	#TODO: phones can be checked against a list of hoax numbers
 	return value
 
 def check_name(value):
 		
-	#if name is empty return
+	#if name is too short
 	if len(value) < 3 or len(value) > 60 :
 		return ''
 		
@@ -79,6 +85,7 @@ def check_name(value):
 		print('Bad Name Syntax')
 		return ''
 	
+	#TODO: Check against a name synonim dictionary to catch misspelled names and correct
 	return value
 	
 def clean_up_data():
@@ -86,6 +93,7 @@ def clean_up_data():
 	print("Opening file...")
 	
 	clean_data = []
+	seen_emails = set()
 	
 	with open('data.csv', encoding="utf-8") as csvfile:
 		reader = csv.DictReader(csvfile)
@@ -100,11 +108,17 @@ def clean_up_data():
 			
 			if len(row['email'])==0 and len(row['phone'])==0:
 				continue
-				
+			
+			#Check against duplicate emails - only take the record when first seen
+			if row['email'] in seen_emails:
+				continue
+			
 			print(row['name'], row['phone'], row['email'])
+			seen_emails.add(row['email'])
 			clean_data.append(row)
 
 
+	
 	with open('cleandata.csv', 'w') as csvfile:
 		fieldnames = ['name', 'phone', 'email']
 		writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
